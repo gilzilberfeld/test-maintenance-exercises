@@ -67,7 +67,7 @@ public class CalculatorTests {
 	}
 
 	@Test
- 	public void NotEnoughInfo() {
+ 	public void onePress() {
 		Calculator c = new Calculator();
 		c.press("1");
 		String result = c.getDisplay();
