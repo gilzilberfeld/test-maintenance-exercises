@@ -1,15 +1,16 @@
-package testmaintenanceexercises;
+package testmaintenanceexercises.unit;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.transaction.annotation.Isolation;
+
+import testmaintenanceexercises.Calculator;
+import testmaintenanceexercises.User;
 
 
-public class UnitTests {
+public class CalculatorTests {
 	@Test
 	public void CancelTheFirstNumber() {
 		Calculator c = new Calculator();
@@ -30,24 +31,28 @@ public class UnitTests {
 	}
 
 	@Test
-	@Category(Isolation.class)
 	public void displayOnlyIfUserIsLoggedIn(){
 		Calculator calc = new Calculator();
 		if (calc.getCurrentUser() != null)
 			assertEquals("0",calc.getDisplay());
 	}
 	
-	@Value("memory")
-	private String memory;
-	
 	@Test
 	public void restoreMemoryAndContinue() {
+		
 		Calculator calculator = new Calculator();
-		String lastStoredValue = calculator.getLastValueFor("Gil");
-		if (lastStoredValue == memory) {
-			calculator.press("2");
+		MockUserRepository mockUserRepository = new MockUserRepository();
+		User mockUser = new User();
+		mockUser.setName("Gil");
+		mockUser.setMemory(2L);
+		mockUserRepository.mockUser = mockUser;
+		calculator.userRepository = mockUserRepository;
+		calculator.getLastValueFor("Gil");
+		String lastStoredValue = calculator.getDisplay();
+		if (lastStoredValue.equals("2")) {
+			calculator.press("3");
 			String result = calculator.getDisplay();
-			assertEquals("12", result);
+			assertEquals("23", result);
 		}
 	}
 
@@ -70,7 +75,7 @@ public class UnitTests {
 	}
 
 	@Test
-	public void RedundnatTest1() {
+	public void TwoNumbers() {
 		Calculator c = new Calculator();
 		c.press("1");
 		c.press("2");
@@ -79,7 +84,7 @@ public class UnitTests {
 	}
 
 	@Test
-	public void RedundnatTest2() {
+	public void AnotherTwoNumbers() {
 		Calculator c = new Calculator();
 		c.press("9");
 		c.press("5");
@@ -89,7 +94,7 @@ public class UnitTests {
 
 	@Ignore
 	@Test
-	public void RedundnatTest4() {
+	public void OtherTwoNumbers() {
 		Calculator c = new Calculator();
 		c.press("7");
 		c.press("3");
@@ -97,18 +102,18 @@ public class UnitTests {
 		assertEquals(result, "73");
 	}
 	
+	@Ignore
 	@Test
 	public void orderOfOperations() {
-		/// This is a long test
 		Calculator c = new Calculator();
 		c.press("1");
 		c.press("+");
-		c.press("2");
-		c.press("*");
+		c.press("8");
+		c.press("/");
 		c.press("4");
 		c.press("=");
 		String result = c.getDisplay();
-		assertEquals(result, "9");
+		assertEquals(result, "3");
 	}
 
 }

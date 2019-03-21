@@ -1,4 +1,4 @@
-package testmaintenanceexercises;
+package testmaintenanceexercises.integration;
 
 import static org.junit.Assert.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -6,30 +6,45 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.Before;
+import org.junit.FixMethodOrder;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.junit.runners.MethodSorters;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import testmaintenanceexercises.Calculator;
+import testmaintenanceexercises.User;
+import testmaintenanceexercises.configurations.CalculatorTestConfiguration;
 
 @RunWith(SpringRunner.class)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@ContextConfiguration(classes = {CalculatorTestConfiguration.class})
+@DataJpaTest
 @SpringBootTest
-public class IntegrationTests{
+@AutoConfigureMockMvc
+public class CalculatorTests{
 
 
 	@Autowired
-	private WebApplicationContext wac;
 	private MockMvc mockMvc;
 	
 	
 	@Test
 	public void OverflowAfterMultiplePresses() throws Exception{
-		mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
 		mockMvc.perform(
 				post("/calculator/press").param("key", "9"));
 		mockMvc.perform(
@@ -42,16 +57,15 @@ public class IntegrationTests{
 				post("/calculator/press").param("key", "9"));
 		mockMvc.perform(
 				post("/calculator/press").param("key", "9"));
-		mockMvc.perform(get("/calculator/display"))
+		MvcResult result = mockMvc.perform(get("/calculator/display"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.display").value("E"))
 				.andReturn();
+
+		assertEquals("E", result.getResponse().getContentAsString());
 	}
 
 	@Test
 	public void DivisionByZero() throws Exception {
-		// Check message instead of display
-		mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
 		mockMvc.perform(
 				post("/calculator/press").param("key", "9"));
 		mockMvc.perform(
@@ -60,15 +74,16 @@ public class IntegrationTests{
 				post("/calculator/press").param("key", "0"));
 		mockMvc.perform(
 				post("/calculator/press").param("key", "="));
-		mockMvc.perform(get("/calculator/display"))
+		MvcResult result = mockMvc.perform(get("/calculator/display"))
 		.andExpect(status().isOk())
-		.andExpect(jsonPath("$.status").value("Division By Zero Error"))
 		.andReturn();
+
+		assertEquals("E", result.getResponse().getContentAsString());
 	}
 
+	@Ignore
 	@Test
 	public void CalculationsWithLastValueSaved() throws Exception {
-		mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
 		
 		// Wait for server to answer
 		MvcResult storedResult = 
@@ -89,7 +104,7 @@ public class IntegrationTests{
 		mockMvc.perform(get("/calculator/display"))
 		.andExpect(status().isOk())
 		.andExpect(jsonPath("$.display").value("3"))
-		.andReturn();		
+		.andReturn();
 	}
 
 	@Test
@@ -102,43 +117,50 @@ public class IntegrationTests{
 		assertEquals("-2", result);
 	}
 	
-	@Test
-	public void DependentOnLoggedOnUser() throws Exception {
-		mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
-		MvcResult currentUserResult = 
-				mockMvc.perform(
-						get("/calculator/currentUser"))
-						.andReturn();
-
-
-		if (currentUserResult.getResponse()
-				.getContentAsString()
-				.contains("Gil"))
-		{
-			mockMvc.perform(
-					post("/calculator/press").param("key", "+"));
-			mockMvc.perform(
-					post("/calculator/press").param("key", "3"));
-			mockMvc.perform(get("/calculator/display"))
-			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.display").value("3"))
-			.andReturn();
-		}
-		else
-			fail("Wrong user");
+	@Autowired TestEntityManager entityManager;
+	@Before
+	public void setup() {
+		User user = new User();
+		user.setName("Gil");
+		user.setMemory((long) 2);
+		entityManager.persistAndFlush(user);
 	}
-
-
+	
 	@Test
-	public void AlsoDependentOnUser() {
-		mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
-		// If user is logged on
-		// “5”,”+”,"
+	public void RestoreByUser() throws Exception {
+		
+		mockMvc.perform(post("/calculator/restore?user=Gil"))
+				.andExpect(status().isOk());
+		
+		MvcResult result = mockMvc.perform(get("/calculator/display"))
+				.andExpect(status().isOk())
+				.andReturn();
+		
+		assertEquals(result.getResponse().getContentAsString(), "2");
 	}
+	
+	@Test
+	public void RestoreByUserAndContinue() throws Exception {
 
+		mockMvc.perform(post("/calculator/restore?user=Gil"))
+				.andExpect(status().isOk());
+		
+		mockMvc.perform(
+				post("/calculator/press").param("key", "+"));
+		
+		MvcResult result = mockMvc.perform(get("/calculator/display"))
+				.andExpect(status().isOk())
+				.andReturn();
+
+		
+		assertEquals(result.getResponse().getContentAsString(), "2");
+	}
+	
+
+
+	@Ignore
 	@Test
 	public void MultiParameterCalculation() throws Exception {
-		mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
 		mockMvc.perform(
 				post("/calculator/press").param("key", "3"));
 		mockMvc.perform(
@@ -151,15 +173,15 @@ public class IntegrationTests{
 				post("/calculator/press").param("key", "9"));
 		mockMvc.perform(
 				post("/calculator/press").param("key", "="));
-		mockMvc.perform(get("/calculator/display"))
+		MvcResult result = mockMvc.perform(get("/calculator/display"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.display").value("7"))
 				.andReturn();
+
+		assertEquals (result.getResponse().getContentAsString(), "7");
 	}
 
 	@Test
 	public void SimpleCalcuation() throws Exception {
-		mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
 		mockMvc.perform(
 				post("/calculator/press").param("key", "1"));
 		mockMvc.perform(
@@ -168,31 +190,25 @@ public class IntegrationTests{
 				post("/calculator/press").param("key", "2"));
 		mockMvc.perform(
 				post("/calculator/press").param("key", "="));
-		mockMvc.perform(get("/calculator/display"))
+		MvcResult result = mockMvc.perform(get("/calculator/display"))
 		.andExpect(status().isOk())
-		.andExpect(jsonPath("$.display").value("3"))
 		.andReturn();
+
+		assertEquals("3", result.getResponse().getContentAsString());
 	}
 
 
 	@Test
-	public void DependingOnFile() {
-		mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
-		//
-
-	}
-
-	@Test
-	public void pressinOpKeyDoesntChangeDisplay() throws Exception {
-		mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
+	public void pressingOpKeyDoesntChangeDisplay() throws Exception {
 		mockMvc.perform(
 				post("/calculator/press").param("key", "6"));
 		mockMvc.perform(
 				post("/calculator/press").param("key", "+"));
-		mockMvc.perform(get("/calculator/display"))
+		MvcResult result = mockMvc.perform(get("/calculator/display"))
 		.andExpect(status().isOk())
-		.andExpect(jsonPath("$.display").value("6"))
 		.andReturn();
+		
+		assertEquals("6", result.getResponse().getContentAsString());
 }
 
 	@Test
@@ -205,10 +221,11 @@ public class IntegrationTests{
 				post("/calculator/press").param("key", "3"));
 		mockMvc.perform(
 				post("/calculator/press").param("key", "="));
-		mockMvc.perform(get("/calculator/display"))
+		MvcResult result = mockMvc.perform(get("/calculator/display"))
 		.andExpect(status().isOk())
-		.andExpect(jsonPath("$.display").value("8"))
 		.andReturn();
+
+		assertEquals("8", result.getResponse().getContentAsString());
 	}
 
 }
