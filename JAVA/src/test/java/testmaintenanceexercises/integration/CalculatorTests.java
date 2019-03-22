@@ -81,7 +81,7 @@ public class CalculatorTests{
 		assertEquals("E", result.getResponse().getContentAsString());
 	}
 
-	@Ignore
+	@Ignore ("Not implemented")
 	@Test
 	public void CalculationsWithLastValueSaved() throws Exception {
 		
@@ -101,10 +101,11 @@ public class CalculatorTests{
 				post("/calculator/press").param("key", "3"));
 		mockMvc.perform(
 				post("/calculator/press").param("key", "="));
-		mockMvc.perform(get("/calculator/display"))
-		.andExpect(status().isOk())
-		.andExpect(jsonPath("$.display").value("3"))
-		.andReturn();
+		MvcResult result = mockMvc.perform(get("/calculator/display"))
+				.andExpect(status().isOk())
+				.andReturn();
+
+		assertEquals("5", result.getResponse().getContentAsString());
 	}
 
 	@Test
@@ -158,7 +159,7 @@ public class CalculatorTests{
 	
 
 
-	@Ignore
+	@Ignore("Not implemented")
 	@Test
 	public void MultiParameterCalculation() throws Exception {
 		mockMvc.perform(
