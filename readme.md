@@ -1,4 +1,5 @@
 These are the pre-requisites for the workshop. I'm listing the settings on my machine, but the exercises can be fit to compile under different versions, they are not really high tech :)
+Also have Diff tool installed (I'm using KDiff3).
 
 ## Java:
 Eclipse (2018-09) or IntelliJ
